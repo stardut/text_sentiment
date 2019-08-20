@@ -8,21 +8,22 @@ import pandas as pd
 class dataset(object):
     """docstring for data"""
 
-    def __init__(self, datafile):
+    def __init__(self, datafile, max_len=10):
         super(dataset, self).__init__()
         self.char_map_file = 'data/char_map.json'
         self.train_file = 'data/train.csv'
         self.test_file = 'data/test.csv'
         self.val_file = 'data/val.csv'
         self.datafile = datafile
-        self.char_id = {}
-        self.char_num = 0
+        self.max_len = max_len
+        self.vocab = {}
+        self.char_num = 1
         self.pointer = 0
         self.load_data()
 
     def addChar(self, char):
-        if char not in self.char_id:
-            self.char_id[char] = self.char_num
+        if char not in self.vocab:
+            self.vocab[char] = self.char_num
             self.char_num += 1
 
     def addSeq(self, seq):
@@ -59,29 +60,36 @@ class dataset(object):
             self.addSeq(line)
 
         with open(self.char_map_file, 'w+', encoding='utf-8') as f:
-            json.dump(self.char_id, f, ensure_ascii=False)
+            json.dump(self.vocab, f, ensure_ascii=False)
 
     def train_data(self):
         yield [inputs, targets]
 
     def char2id(self, char):
-        return self.char_id[char]
+        return self.vocab[char]
 
     def load_char_map(self):
         with open(self.char_map_file, 'r', encoding='utf-8') as f:
-            self.char_id = json.load(f)
+            self.vocab = json.load(f)
+            self.vocab_len = len(self.vocab)
 
     def load_data(self):
         def shuffle(df):
             return df.sample(frac=1).reset_index(drop=True)
 
-        df = shuffle(pd.read_csv(self.datafile))
+        df = shuffle(pd.read_csv(self.datafile, encoding='utf-8-sig'))
         self.load_char_map()
         self.df2rundata(df)
 
+    def seq2ids(self, seq):
+        pading_list = [0] * self.max_len
+        ids = list(map(self.char2id, seq))
+        ids += pading_list
+        return np.array(ids[:self.max_len])
+
     def df2rundata(self, df):
         lines = df['review'].to_numpy()
-        self.inputs = np.array([np.array(list(map(self.char2id, line))) for line in lines])
+        self.inputs = np.array(list(map(self.seq2ids, lines)))
         self.labels = df['label'].to_numpy()
 
     def next(self, batch_size=64):
@@ -95,13 +103,5 @@ class dataset(object):
             yield inputs, labels
 
 
-data = dataset('data/val.csv')
-
-d = data.next()
-for x in range(1, 10):
-    print(next(d))
-
-
-# datafile = 'data/simplifyweibo_4_moods.csv'
-# data.gen_char_map(datafile)
-# data.split_data(file)
+# data = dataset('data/val.csv', max_len=5)
+# item = data.next(batch_size=3)
