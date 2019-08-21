@@ -9,7 +9,7 @@ class Net(nn.Module):
     def __init__(self, vocab_size, window_size, seq_len):
         super(Net, self).__init__()
         embedding_size = 256
-        feature_size = 128
+        feature_size = 512
         self.conv = nn.ModuleList([
             nn.Sequential(
                 nn.Conv1d(embedding_size, feature_size, w_size),
@@ -18,8 +18,9 @@ class Net(nn.Module):
         ])
         self.embedding = nn.Embedding(num_embeddings=vocab_size,
                                       embedding_dim=embedding_size)
-        self.fc1 = nn.Linear(feature_size * len(window_size), 128)
-        self.fc2 = nn.Linear(128, 4)
+        self.fc1 = nn.Linear(feature_size * len(window_size), 256)
+        self.fc2 = nn.Linear(256, 4)
+        self.softmax = nn.Softmax(0)
 
     def forward(self, x):
         x = self.embedding(x)  # b * len * embedding
@@ -29,5 +30,6 @@ class Net(nn.Module):
         x = x.view(-1, x.size(1))  # b * (feature*window_size)
         x = self.fc1(x)  # b * 128
         x = F.dropout(x, 0.5, self.training)
-        y = self.fc2(x)
-        return y
+        x = self.fc2(x)
+        # x = self.softmax(x)
+        return x

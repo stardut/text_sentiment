@@ -54,8 +54,8 @@ class dataset(object):
         df = pd.concat(data)
         df.to_csv(path, index=0)
 
-    def gen_char_map(self, file):
-        df = pd.read_csv(datafile, encoding='utf-8-sig')
+    def gen_char_map(self):
+        df = pd.read_csv(self.datafile, encoding='utf-8-sig')
         for line in df['review'].values:
             self.addSeq(line)
 
@@ -94,14 +94,17 @@ class dataset(object):
 
     def next(self, batch_size=64):
         while 1:
-            if self.pointer + batch_size > self.inputs.shape[0]:
-                self.pointer = 0
             s = self.pointer
             e = s + batch_size
+            if e > len(self.labels):
+                self.pointer = 0
+                break
+
             inputs = self.inputs[s:e]
             labels = self.labels[s:e]
             yield inputs, labels
+            self.pointer = e
 
 
-# data = dataset('data/val.csv', max_len=5)
-# item = data.next(batch_size=3)
+data = dataset('data/simplifyweibo_4_moods.csv')
+data.gen_char_map()
